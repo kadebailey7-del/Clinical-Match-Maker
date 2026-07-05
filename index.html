@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clinical Match Maker</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f6fb; margin:0; padding:30px; }
+    .container { max-width:900px; margin:auto; background:white; padding:30px; border-radius:16px; box-shadow:0 4px 20px #ccc; }
+    h1 { text-align:center; }
+    .slider-box { margin:25px 0; }
+    label { font-weight:bold; }
+    .info { cursor:pointer; color:#4b6cff; margin-left:6px; }
+    .info:hover::after {
+      content: attr(data-tip);
+      display:block;
+      background:#222;
+      color:white;
+      padding:10px;
+      border-radius:8px;
+      margin-top:8px;
+      max-width:500px;
+      font-weight:normal;
+    }
+    input[type=range] { width:100%; }
+    .remaining { font-size:22px; font-weight:bold; text-align:center; margin:25px; }
+    button { width:100%; padding:15px; font-size:18px; border:none; border-radius:10px; background:#4b6cff; color:white; cursor:pointer; }
+    button:hover { background:#314fd1; }
+    table { width:100%; border-collapse:collapse; margin-top:25px; }
+    th, td { padding:12px; border-bottom:1px solid #ddd; text-align:left; }
+    th { background:#eef1ff; }
+  </style>
+</head>
+
+<body>
+<div class="container">
+  <h1>Clinical Match Maker</h1>
+  <p>Allocate exactly <strong>100 points</strong> across the five categories based on what matters most to you.</p>
+
+  <div class="slider-box">
+    <label>Clinical Experience <span class="info" data-tip="Procedures, complex cases, surgical variety, case volume, and autonomy.">ⓘ</span></label>
+    <input type="range" min="0" max="100" step="0.5" value="20" id="clinical" oninput="update()">
+    <span id="clinicalVal">20</span> points
+  </div>
+
+  <div class="slider-box">
+    <label>Educational Environment <span class="info" data-tip="Teaching quality, mentorship, feedback, and overall learning environment.">ⓘ</span></label>
+    <input type="range" min="0" max="100" step="0.5" value="20" id="education" oninput="update()">
+    <span id="educationVal">20</span> points
+  </div>
+
+  <div class="slider-box">
+    <label>Work Culture <span class="info" data-tip="Respect, teamwork, support, comfort asking for help, and provider relationships.">ⓘ</span></label>
+    <input type="range" min="0" max="100" step="0.5" value="20" id="culture" oninput="update()">
+    <span id="cultureVal">20</span> points
+  </div>
+
+  <div class="slider-box">
+    <label>Lifestyle <span class="info" data-tip="Work-life balance, call burden, commute, cost of living, practice setting, and access to a metro area.">ⓘ</span></label>
+    <input type="range" min="0" max="100" step="0.5" value="20" id="lifestyle" oninput="update()">
+    <span id="lifestyleVal">20</span> points
+  </div>
+
+  <div class="slider-box">
+    <label>Employment Potential <span class="info" data-tip="Salary, sign-on bonus, compensation package, and future job opportunity.">ⓘ</span></label>
+    <input type="range" min="0" max="100" step="0.5" value="20" id="employment" oninput="update()">
+    <span id="employmentVal">20</span> points
+  </div>
+
+  <div class="remaining" id="remaining">Points Remaining: 0</div>
+
+  <button onclick="calculateMatches()">Calculate My Matches</button>
+
+  <div id="results"></div>
+</div>
+
+<script>
+const sites = [
+  {name:"Archbold Memorial", clinical:3.00, education:4.75, culture:5.00, lifestyle:3.50, employment:3.50},
+  {name:"Coosa Valley", clinical:3.19, education:3.75, culture:3.70, lifestyle:3.42, employment:1.50},
+  {name:"Destin", clinical:2.50, education:5.00, culture:5.00, lifestyle:3.83, employment:1.50},
+  {name:"EAMC", clinical:2.50, education:3.69, culture:3.80, lifestyle:3.17, employment:3.62},
+  {name:"Flowers Hospital", clinical:2.50, education:4.25, culture:2.20, lifestyle:3.50, employment:3.00},
+  {name:"Grady Memorial", clinical:2.62, education:4.25, culture:3.60, lifestyle:2.50, employment:3.00},
+  {name:"Mobile Infirmary", clinical:3.92, education:4.08, culture:4.80, lifestyle:3.28, employment:2.00},
+  {name:"MUSC–Florence", clinical:2.63, education:3.75, culture:3.20, lifestyle:3.00, employment:2.50},
+  {name:"Northeast Georgia Medical Center", clinical:3.62, education:4.62, culture:4.50, lifestyle:3.00, employment:4.00},
+  {name:"Northside Forsyth", clinical:2.38, education:4.50, culture:4.80, lifestyle:3.17, employment:4.50},
+  {name:"Parkview Health", clinical:3.75, education:3.75, culture:4.80, lifestyle:4.67, employment:3.00},
+  {name:"Phoebe Putney", clinical:3.62, education:4.25, culture:3.80, lifestyle:3.25, employment:3.25},
+  {name:"Piedmont Atlanta", clinical:3.58, education:3.83, culture:3.47, lifestyle:2.72, employment:3.00},
+  {name:"Piedmont Eastside", clinical:2.50, education:3.50, culture:4.60, lifestyle:3.67, employment:3.00},
+  {name:"Piedmont Fayette", clinical:2.13, education:3.38, culture:3.40, lifestyle:3.58, employment:2.75},
+  {name:"Piedmont Newnan", clinical:2.63, education:3.50, culture:4.80, lifestyle:3.17, employment:2.00},
+  {name:"Ridgewood", clinical:2.56, education:3.62, culture:4.20, lifestyle:4.00, employment:null},
+  {name:"Rome FLOYD", clinical:4.25, education:4.75, culture:5.00, lifestyle:3.67, employment:2.00},
+  {name:"Savannah St. Joseph's/Candler", clinical:2.44, education:3.50, culture:3.80, lifestyle:3.25, employment:3.00},
+  {name:"South Baldwin", clinical:3.63, education:2.75, culture:3.80, lifestyle:2.67, employment:null},
+  {name:"St. Francis Emory Healthcare", clinical:3.56, education:3.62, culture:3.30, lifestyle:3.00, employment:4.25},
+  {name:"Tallahassee Memorial", clinical:3.94, education:4.38, culture:3.80, lifestyle:3.17, employment:4.00},
+  {name:"Trident Medical Center", clinical:3.13, education:3.75, culture:4.50, lifestyle:3.33, employment:2.50},
+  {name:"UW–Madison", clinical:3.13, education:4.75, culture:4.40, lifestyle:4.00, employment:4.50}
+];
+
+function getWeights() {
+  return {
+    clinical: parseFloat(document.getElementById("clinical").value),
+    education: parseFloat(document.getElementById("education").value),
+    culture: parseFloat(document.getElementById("culture").value),
+    lifestyle: parseFloat(document.getElementById("lifestyle").value),
+    employment: parseFloat(document.getElementById("employment").value)
+  };
+}
+
+function update() {
+  const w = getWeights();
+  const total = w.clinical + w.education + w.culture + w.lifestyle + w.employment;
+
+  document.getElementById("clinicalVal").innerText = w.clinical;
+  document.getElementById("educationVal").innerText = w.education;
+  document.getElementById("cultureVal").innerText = w.culture;
+  document.getElementById("lifestyleVal").innerText = w.lifestyle;
+  document.getElementById("employmentVal").innerText = w.employment;
+
+  document.getElementById("remaining").innerText = "Points Remaining: " + (100 - total).toFixed(1);
+}
+
+function calculateMatches() {
+  const w = getWeights();
+  const total = w.clinical + w.education + w.culture + w.lifestyle + w.employment;
+
+  if (Math.abs(total - 100) > 0.01) {
+    alert("Your points must equal exactly 100 before calculating matches.");
+    return;
+  }
+
+  const results = sites.map(site => {
+    let weightedTotal = 0;
+    let availableWeight = 0;
+    let partial = false;
+
+    for (const category of ["clinical", "education", "culture", "lifestyle", "employment"]) {
+      if (site[category] !== null) {
+        weightedTotal += site[category] * w[category];
+        availableWeight += w[category];
+      } else {
+        partial = true;
+      }
+    }
+
+    const score = weightedTotal / availableWeight;
+    const percent = (score / 5) * 100;
+
+    return {name: site.name, score, percent, partial};
+  });
+
+  results.sort((a,b) => b.percent - a.percent);
+
+  let html = "<h2>Your Match Results</h2>";
+  html += "<table><tr><th>Rank</th><th>Clinical Site</th><th>Match Score</th><th>Match %</th><th>Note</th></tr>";
+
+  results.forEach((r, index) => {
+    html += `<tr>
+      <td>${index + 1}</td>
+      <td>${r.name}</td>
+      <td>${r.score.toFixed(2)} / 5</td>
+      <td>${r.percent.toFixed(1)}%</td>
+      <td>${r.partial ? "Partial data" : ""}</td>
+    </tr>`;
+  });
+
+  html += "</table>";
+  document.getElementById("results").innerHTML = html;
+}
+
+update();
+</script>
+</body>
+</html>
